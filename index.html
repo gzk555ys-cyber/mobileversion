@@ -27,7 +27,7 @@
         .mobile-menu-button, .mobile-header-title, .mobile-header-subtitle,
         .mobile-stats-dots, .mobile-card-list, .mobile-promotion-legend,
         .mobile-drawer-scrim, .mobile-drawer, .mobile-tabbar, .mobile-score-fab,
-        .mobile-sheet-grab, .mobile-score-type-options { display: none; }
+        .mobile-sheet-grab, .mobile-score-type-options, .mobile-score-backdrop { display: none; }
 
         @media (max-width: 768px) {
             html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -159,15 +159,20 @@
             .mobile-tabbar button.active b { font-weight: 900; }
             .mobile-score-fab { display: block; position: fixed; z-index: 46; right: 14px; bottom: calc(75px + env(safe-area-inset-bottom)); min-height: 48px; padding: 0 18px; border: 0; border-radius: 24px; background: #f5c518; color: #1f2937; box-shadow: 0 5px 18px rgba(0,0,0,.22); font-size: 14px; font-weight: 900; }
             footer { margin-bottom: 0 !important; padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important; }
-            /* Bottom-sheet presentation reuses the original score form, image parser and submit handler. */
-            #modal-score { align-items: flex-end !important; justify-content: center !important; padding: 0 !important; z-index: 100 !important; }
-            #modal-score > .mobile-score-sheet { transform: translateY(100%); transition: transform .28s ease; }
-            #modal-score:not(.hidden) > .mobile-score-sheet { transform: translateY(0); }
-            #modal-score > .mobile-score-sheet { width: 100% !important; max-width: none !important; max-height: 85vh !important; max-height: 85dvh !important; border-radius: 20px 20px 0 0 !important; overflow-y: auto !important; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
-            .mobile-sheet-grab { display: block; width: 42px; height: 5px; margin: 9px auto 2px; border-radius: 5px; background: #cbd5e1; }
+            /* Bottom sheet: fixed viewport, independent scrolling and an anchored action area. */
+            #modal-score { position: fixed; inset: auto 0 auto 0 !important; top: var(--mobile-score-viewport-offset-top, 0px); height: var(--mobile-score-viewport-height, 100dvh); align-items: flex-end !important; justify-content: center !important; padding: 0 !important; z-index: 100 !important; background: transparent !important; overflow: hidden; }
+            #modal-score > .mobile-score-backdrop { display: block; position: absolute; inset: 0; z-index: 0; background: rgba(15,23,42,.62); touch-action: none; }
+            #modal-score > .mobile-score-sheet { position: relative; z-index: 1; align-self: flex-end; transform: translateY(100%); transition: transform .25s ease; }
+            #modal-score.sheet-open > .mobile-score-sheet { transform: translateY(0); }
+            #modal-score:not(.hidden).closing > .mobile-score-sheet { transform: translateY(100%); }
+            #modal-score > .mobile-score-sheet { width: 100% !important; max-width: none !important; max-height: 90vh !important; max-height: 90dvh !important; max-height: min(90dvh, var(--mobile-score-viewport-height, 100dvh)) !important; border-radius: 20px 20px 0 0 !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; overflow-y: auto !important; padding-bottom: env(safe-area-inset-bottom) !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; scroll-padding-bottom: 110px; }
+            .mobile-sheet-grab { display: block; width: 42px; height: 5px; margin: 9px auto 2px; border-radius: 5px; background: #cbd5e1; touch-action: pan-y; }
             #modal-score > .mobile-score-sheet > .bg-emerald-900 { position: sticky; top: 0; padding: 12px 16px !important; z-index: 5; }
             #modal-score > .mobile-score-sheet > .bg-emerald-900 h3 { font-size: 14px; }
             #modal-score > .mobile-score-sheet > .p-6 { padding: 14px !important; gap: 14px !important; }
+            #form-score .mobile-score-actions { position: sticky; bottom: 0; z-index: 8; display: flex !important; flex-direction: row !important; justify-content: flex-end; gap: 8px; margin: 12px -14px calc(-14px - env(safe-area-inset-bottom)); padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #e2e8f0; box-shadow: 0 -5px 14px rgba(15,23,42,.06); }
+            #form-score .mobile-score-actions button { min-height: 48px; }
+            #form-score .mobile-score-actions button[type="submit"] { flex: 1; width: auto !important; }
             #score-image-file { min-height: 44px; font-size: 14px !important; }
             #btn-analyze-image { min-height: 46px; width: 100%; }
             #form-score { gap: 13px !important; }
@@ -745,6 +750,7 @@
 
     <!-- MODAL 2: ADD SCORE MODAL (手入力 ＆ AI一括解析・編集・一括登録) -->
     <div id="modal-score" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="mobile-score-backdrop" aria-hidden="true"></div>
         <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto mobile-score-sheet">
             <div class="mobile-sheet-grab" aria-hidden="true"></div>
             <div class="bg-emerald-900 px-6 py-4 text-white flex justify-between items-center sticky top-0 z-10">
@@ -875,9 +881,9 @@
                         </div>
                     </div>
 
-                    <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <div class="mobile-score-actions flex justify-end gap-2 pt-2 border-t border-slate-100">
                         <button type="button" onclick="window.closeModal('modal-score')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">キャンセル</button>
-                        <button type="submit" class="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow cursor-pointer">Firestoreへ手動保存</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow cursor-pointer">保存する</button>
                     </div>
                 </form>
             </div>
@@ -1043,6 +1049,39 @@
         let membersData = [];
         let scoresData = [];
         let systemSettings = { currentSeason: 1, disabledDates: [] };
+        let scoreModalScrollLock = null;
+        let scoreModalCloseTimer = null;
+
+        function lockMobileScorePageScroll() {
+            if (!window.matchMedia('(max-width: 768px)').matches || scoreModalScrollLock) return;
+            const body = document.body;
+            const scrollY = window.scrollY || window.pageYOffset || 0;
+            scoreModalScrollLock = { scrollY, bodyStyle: body.getAttribute('style') };
+            body.style.position = 'fixed';
+            body.style.top = `-${scrollY}px`;
+            body.style.left = '0';
+            body.style.right = '0';
+            body.style.width = '100%';
+            body.style.overflow = 'hidden';
+        }
+
+        function restoreMobileScorePageScroll() {
+            if (!scoreModalScrollLock) return;
+            const saved = scoreModalScrollLock;
+            scoreModalScrollLock = null;
+            if (saved.bodyStyle === null) document.body.removeAttribute('style');
+            else document.body.setAttribute('style', saved.bodyStyle);
+            requestAnimationFrame(() => window.scrollTo(0, saved.scrollY));
+        }
+
+        function updateMobileScoreViewportHeight() {
+            if (!window.matchMedia('(max-width: 768px)').matches) return;
+            const viewport = window.visualViewport;
+            const viewportHeight = viewport ? viewport.height : window.innerHeight;
+            const viewportOffsetTop = viewport ? viewport.offsetTop : 0;
+            document.documentElement.style.setProperty('--mobile-score-viewport-height', `${Math.round(viewportHeight)}px`);
+            document.documentElement.style.setProperty('--mobile-score-viewport-offset-top', `${Math.round(viewportOffsetTop)}px`);
+        }
         let lastSeason = null;
         let isRegisterMode = false;
         let currentUserUid = null;
@@ -1151,9 +1190,57 @@
             document.getElementById('ai-preview-section').classList.add('hidden');
             document.getElementById('score-image-file').value = '';
 
-            document.getElementById('modal-score').classList.remove('hidden');
+            if (scoreModalCloseTimer) {
+                clearTimeout(scoreModalCloseTimer);
+                scoreModalCloseTimer = null;
+            }
+            const scoreModal = document.getElementById('modal-score');
+            scoreModal.classList.remove('closing', 'sheet-open');
+            updateMobileScoreViewportHeight();
+            lockMobileScorePageScroll();
+            scoreModal.classList.remove('hidden');
+            const scoreSheet = scoreModal.querySelector('.mobile-score-sheet');
+            void scoreSheet.offsetHeight;
+            if (window.matchMedia('(max-width: 768px)').matches) {
+                requestAnimationFrame(() => {
+                    if (!scoreModal.classList.contains('hidden') && !scoreModal.classList.contains('closing')) {
+                        scoreModal.classList.add('sheet-open');
+                    }
+                });
+            }
         };
-        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+        window.closeModal = (id) => {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            if (id !== 'modal-score') {
+                modal.classList.add('hidden');
+                return;
+            }
+
+            const shouldAnimate = Boolean(scoreModalScrollLock) || window.matchMedia('(max-width: 768px)').matches;
+            if (scoreModalCloseTimer) {
+                clearTimeout(scoreModalCloseTimer);
+                scoreModalCloseTimer = null;
+            }
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('closing', 'sheet-open');
+                restoreMobileScorePageScroll();
+                return;
+            }
+            if (shouldAnimate) {
+                modal.classList.add('closing');
+                scoreModalCloseTimer = setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('closing', 'sheet-open');
+                    scoreModalCloseTimer = null;
+                    restoreMobileScorePageScroll();
+                }, 250);
+            } else {
+                modal.classList.add('hidden');
+                modal.classList.remove('sheet-open');
+                restoreMobileScorePageScroll();
+            }
+        };
 
         window.switchTab = (tabName) => {
             ['dashboard', 'scores', 'daily', 'members', 'analytics', 'mypage', 'admin'].forEach(t => {
@@ -2554,8 +2641,45 @@ Object.keys(statsMap).forEach(id => {
             document.getElementById('sync-status-badge').classList.toggle('mobile-sync-open');
         });
         document.getElementById('modal-score').addEventListener('click', (event) => {
-            if (event.target.id === 'modal-score') window.closeModal('modal-score');
+            if (event.target.id === 'modal-score' || event.target.classList.contains('mobile-score-backdrop')) {
+                window.closeModal('modal-score');
+            }
         });
+
+        const mobileScoreSheet = document.querySelector('#modal-score .mobile-score-sheet');
+        const mobileScoreGrab = document.querySelector('#modal-score .mobile-sheet-grab');
+        const mobileScoreActions = document.querySelector('#form-score .mobile-score-actions');
+        let scoreGrabStartY = null;
+        mobileScoreGrab.addEventListener('touchstart', (event) => {
+            scoreGrabStartY = event.touches.length ? event.touches[0].clientY : null;
+        }, { passive: true });
+        mobileScoreGrab.addEventListener('touchend', (event) => {
+            if (scoreGrabStartY === null || !event.changedTouches.length) return;
+            const deltaY = event.changedTouches[0].clientY - scoreGrabStartY;
+            scoreGrabStartY = null;
+            if (deltaY >= 80) window.closeModal('modal-score');
+        }, { passive: true });
+        mobileScoreGrab.addEventListener('touchcancel', () => { scoreGrabStartY = null; }, { passive: true });
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateMobileScoreViewportHeight);
+            window.visualViewport.addEventListener('scroll', updateMobileScoreViewportHeight);
+        }
+        window.addEventListener('resize', updateMobileScoreViewportHeight);
+        mobileScoreSheet.addEventListener('focusin', (event) => {
+            if (!event.target.matches('input, select, textarea')) return;
+            window.setTimeout(() => {
+                if (document.getElementById('modal-score').classList.contains('hidden')) return;
+                const sheetRect = mobileScoreSheet.getBoundingClientRect();
+                const fieldRect = event.target.getBoundingClientRect();
+                const actionTop = mobileScoreActions.getBoundingClientRect().top;
+                const visibleBottom = Math.min(sheetRect.bottom, actionTop) - 12;
+                const visibleTop = sheetRect.top + 64;
+                if (fieldRect.bottom > visibleBottom) mobileScoreSheet.scrollTop += fieldRect.bottom - visibleBottom;
+                else if (fieldRect.top < visibleTop) mobileScoreSheet.scrollTop -= visibleTop - fieldRect.top;
+            }, 120);
+        });
+
         document.querySelectorAll('input[name="score-type-mobile"]').forEach(radio => {
             radio.addEventListener('change', () => {
                 if (radio.checked) document.getElementById('score-type').value = radio.value;
