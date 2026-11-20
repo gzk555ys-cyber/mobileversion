@@ -4552,18 +4552,28 @@ Object.keys(statsMap).forEach(id => {
             let matchups = [];
             if (match.ruleMode === 'individual_rank_points') {
                 const all = teams.flatMap(team => team.memberResults.map(member => ({ ...member, teamId: team.id, teamName: team.name })));
-                const rankedPlayers = [...all].filter(member => member.dailyAverage !== null).sort((a, b) => a.dailyAverage - b.dailyAverage);
-                let previousAverage = null;
-                let previousPoints = null;
-                rankedPlayers.forEach((member, index) => {
-                    if (previousAverage !== null && Math.abs(member.dailyAverage - previousAverage) < 0.000001) {
-                        member.points = previousPoints;
-                    } else {
-                        member.points = rankedPlayers.length - index;
-                        previousAverage = member.dailyAverage;
-                        previousPoints = member.points;
-                    }
+                // 同スコアでも同順位にせず、IN→直近10R平均→当該シーズン提出数で決着する。
+                const matchSeason = String(match.season || systemSettings.currentSeason || 1);
+                const tieBreaks = new Map(all.map(member => {
+                    const onDate = dailyScores.filter(score => score.memberId === member.id);
+                    const inScores = onDate.map(score => Number(score.inScore)).filter(Number.isFinite);
+                    const inAverage = inScores.length === onDate.length && inScores.length
+                        ? inScores.reduce((sum, value) => sum + value, 0) / inScores.length : Infinity;
+                    const recent = scoresData.filter(score => score.memberId === member.id && score.date <= match.date && Number.isFinite(Number(score.totalScore)))
+                        .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))).slice(0, 10);
+                    const recentAverage = recent.length ? recent.reduce((sum, score) => sum + Number(score.totalScore), 0) / recent.length : Infinity;
+                    const seasonSubmissions = scoresData.filter(score => score.memberId === member.id && String(score.season || 1) === matchSeason && Number.isFinite(Number(score.totalScore))).length;
+                    return [member.id, { inAverage, recentAverage, seasonSubmissions }];
+                }));
+                const rankedPlayers = [...all].filter(member => member.dailyAverage !== null).sort((a, b) => {
+                    const x = tieBreaks.get(a.id), y = tieBreaks.get(b.id);
+                    return (a.dailyAverage - b.dailyAverage)
+                        || (x.inAverage - y.inAverage || 0)
+                        || (x.recentAverage - y.recentAverage || 0)
+                        || (y.seasonSubmissions - x.seasonSubmissions)
+                        || String(a.id).localeCompare(String(b.id));
                 });
+                rankedPlayers.forEach((member, index) => { member.points = rankedPlayers.length - index; });
                 teams.forEach(team => {
                     const players = rankedPlayers.filter(player => player.teamId === team.id);
                     team.score = players.reduce((sum, player) => sum + player.points, 0);
